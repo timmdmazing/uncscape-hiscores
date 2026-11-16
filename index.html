@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Hiscores</title>
+<style>
+  /* Layout modelled on the Old School hiscores: skill list left, parchment scroll centre,
+     stone boxes right. All drawn in CSS; no Jagex artwork is used. */
+  :root {
+    --gold: #d9c27e; --gold-bright: #ffe139; --stone: #2b2620; --stone-edge: #5a5043;
+    --banner: #1b2236; --banner-edge: #3b4666; --paper: #cdbb8c; --paper-dark: #b29f70; --ink: #000;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: #fff; font: 13px/18px Arial, Helvetica, sans-serif;
+    background-color: #0b0a08;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(60, 52, 40, .35) 0 2px, transparent 3px),
+      radial-gradient(circle at 70% 60%, rgba(60, 52, 40, .3) 0 2px, transparent 3px),
+      linear-gradient(#14110d, #070605);
+    background-size: 46px 46px, 62px 62px, 100% 100%;
+  }
+  button, select { font: inherit; }
+  .page { max-width: 920px; margin: 0 auto; padding: 16px 16px 40px; }
+  header { text-align: center; padding: 18px 0 20px; }
+  header h1 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: bold; color: var(--gold-bright); text-shadow: 2px 2px 0 #000; }
+  header p { margin: 6px 0 0; color: var(--gold); }
+  .cols { display: grid; grid-template-columns: 170px minmax(0, 1fr) 170px; gap: 14px; align-items: start; }
+
+  /* Left: category banner */
+  .banner { background: var(--banner); border: 2px solid var(--banner-edge); border-radius: 3px; padding: 8px 0 10px; box-shadow: 0 0 0 1px #000; }
+  .banner h2, .box h2 { margin: 0 0 6px; font-size: 13px; text-align: center; color: var(--gold-bright); }
+  .banner ul { list-style: none; margin: 0; padding: 0; }
+  .banner li.sep { height: 1px; background: var(--banner-edge); margin: 7px 14px; }
+  .link { background: none; border: 0; padding: 0; color: inherit; cursor: pointer; text-align: left; }
+  .banner .link { display: flex; align-items: center; width: 100%; padding: 2px 8px 2px 10px; color: var(--gold); }
+  .banner .link:hover, .banner .link[aria-current="true"] { color: #fff; }
+  .ic { display: inline-block; width: 16px; height: 16px; margin-right: 6px; flex: none; vertical-align: -3px; }
+  .ic svg { display: block; width: 100%; height: 100%; }
+  .scroll h2 .ic { width: 20px; height: 20px; vertical-align: -5px; }
+  .link:focus-visible, .box button:focus-visible, select:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 1px; }
+
+  /* Centre: parchment scroll */
+  .scroll { color: var(--ink); }
+  .scroll .roll { height: 16px; border-radius: 8px; border: 1px solid #5b4a26;
+    background: linear-gradient(#e2d3a6, #a8935f 55%, #7d6a3d); box-shadow: 0 2px 3px rgba(0, 0, 0, .6); }
+  .scroll .paper { margin: -4px 9px; padding: 16px 10px 20px; min-height: 300px; text-align: center;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(255, 250, 225, .35), transparent 60%),
+      radial-gradient(ellipse at 75% 80%, rgba(120, 95, 50, .25), transparent 55%),
+      linear-gradient(90deg, var(--paper-dark), var(--paper) 9%, var(--paper) 91%, var(--paper-dark));
+    border-left: 1px solid #6b5a33; border-right: 1px solid #6b5a33; }
+  .scroll h2 { margin: 0 0 10px; font-size: 13px; font-weight: bold; }
+  .scroll .tw { overflow: visible; }  /* never clip a table at desktop width */
+  table { margin: 0 auto; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 1px 6px; height: 23px; text-align: right; white-space: nowrap; font-weight: normal; }
+  th { font-weight: bold; }
+  .l { text-align: left; }
+  .c { text-align: center; }
+  .scroll .link { color: var(--ink); }
+  .scroll .link:hover { color: #7a1010; text-decoration: underline; }
+  .win { font-weight: bold; }
+  .gain { color: #1c5c12; }
+  .on { color: #1c5c12; font-size: 11px; font-weight: bold; }
+  .chart { margin: 20px auto 0; max-width: 330px; text-align: left; }
+  .chart h3 { margin: 0 0 10px; font-size: inherit; text-align: center; }
+  .crow { display: grid; grid-template-columns: 104px 1fr; align-items: end; gap: 8px; margin-bottom: 8px; }
+  .cname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  .crow svg { display: block; width: 100%; height: auto; border-bottom: 1px solid #6b5a33; }
+  .bar { fill: #7a2318; }
+  .hit { fill: transparent; cursor: pointer; }
+  .hit:hover, .hit.sel { fill: rgba(0, 0, 0, .1); }
+  .caxis { display: flex; justify-content: space-between; margin-left: 112px; font-size: 11px; color: #4a3d1f; }
+  .tip { margin: 8px 0 0; min-height: 18px; font-size: 12px; text-align: center; color: #2a2010; }
+  .foot { margin: 12px 0 0; font-size: 11px; line-height: 15px; color: #4a3d1f; }
+
+  /* Right: stone boxes */
+  .side { display: grid; gap: 14px; }
+  .box { background: var(--stone); border: 2px solid var(--stone-edge); border-radius: 4px; padding: 8px 10px 12px; text-align: center; box-shadow: 0 0 0 1px #000, inset 0 0 12px rgba(0, 0, 0, .6); }
+  .box p { margin: 0; color: var(--gold); }
+  .box select { width: 100%; margin-bottom: 6px; padding: 2px; background: #efe6c8; color: #000; border: 1px solid #000; }
+  .box button { padding: 1px 10px; background: #e6e0cf; color: #000; border: 1px solid #000; cursor: pointer; }
+
+  /* Below 900px the three columns stack, so the scroll always has the full width. */
+  @media (max-width: 900px) {
+    body { font-size: 15px; line-height: 21px; }
+    .cols { grid-template-columns: 1fr; }
+    .banner ul { display: flex; flex-wrap: wrap; gap: 4px 4px; padding: 0 8px; }
+    .banner li.sep { display: none; }
+    .banner .link { width: auto; padding: 4px 9px; border: 1px solid var(--banner-edge); border-radius: 3px; }
+    .banner .link[aria-current="true"] { border-color: #fff; }
+    .banner h2, .box h2, .scroll h2 { font-size: 15px; }
+    th, td { height: 30px; }
+    .side { grid-template-columns: 1fr 1fr; }
+  }
+  /* Phones: tighten wide tables so six columns fit; scrolling is the last resort only here. */
+  @media (max-width: 480px) {
+    .scroll .paper { padding-left: 4px; padding-right: 4px; }
+    .scroll .tw { overflow-x: auto; }
+    table.wide { font-size: 13px; }
+    table.wide th, table.wide td { padding: 1px 4px; }
+    table.wide .on { display: block; line-height: 1; }  /* under the name, so it adds no width */
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title">Hiscores</h1>
+    <p id="updated"></p>
+  </header>
+  <div class="cols">
+    <nav class="banner" aria-label="Categories">
+      <h2>Hiscores</h2>
+      <ul id="cats"></ul>
+    </nav>
+    <main class="scroll">
+      <div class="roll"></div>
+      <div class="paper">
+        <h2 id="heading"></h2>
+        <div class="tw"><table id="table"></table></div>
+        <div id="extra"></div>
+        <p class="foot" id="foot" hidden></p>
+      </div>
+      <div class="roll"></div>
+    </main>
+    <aside class="side">
+      <div class="box">
+        <h2>Personal scores</h2>
+        <select id="who" aria-label="Player"></select>
+        <button id="who-go">View</button>
+      </div>
+      <div class="box">
+        <h2>Compare Users</h2>
+        <select id="cmp-a" aria-label="First player"></select>
+        <select id="cmp-b" aria-label="Second player"></select>
+        <button id="cmp-go">Compare</button>
+      </div>
+    </aside>
+  </div>
+</div>
+<script>
+const D = {"title":"UncScape Hiscores","updated":"2026-11-16T18:02:33+00:00","playtime":{"tz":"Europe/Amsterdam","days":["2026-10-20","2026-10-21","2026-10-22","2026-10-23","2026-10-24","2026-10-25","2026-10-26","2026-10-27","2026-10-28","2026-10-29","2026-10-30","2026-10-31","2026-11-01","2026-11-02","2026-11-03","2026-11-04","2026-11-05","2026-11-06","2026-11-07","2026-11-08","2026-11-09","2026-11-10","2026-11-11","2026-11-12","2026-11-13","2026-11-14","2026-11-15","2026-11-16"],"players":[{"name":"Martijn","daily":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4980,0,0],"online":false},{"name":"UnSynched","daily":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5946,0,0,0,5090,0,176],"online":true}]},"skills":[{"id":"4pefO9k1lUqfA6mvHNi1SA","name":"Attack","named":true},{"id":"0hreSMRVXUihq9qjDO2CFA","name":"Magic","named":true},{"id":"heq7u88Q2UuLXFqLGTVwQw","name":"Ranged","named":true},{"id":"jqX0Gh6QI0GFFPCDFK_CJQ","name":"Mining","named":true},{"id":"4zYUGF5u_0KbMLkWJmmBbQ","name":"Woodcutting","named":true},{"id":"Wf3i7Ha-B06DH719j1vtBw","name":"Artisan","named":true},{"id":"waK-8EyQFQ2xEjCGYmuTRQ","name":"Construction","named":true},{"id":"Tn7t6DQyX0-Q0cM5K7B90A","name":"Cooking","named":true},{"id":"NOqC-z-2ckqi0El22qMFlw","name":"Runecrafting","named":true},{"id":"PyUi-0LU_riFY46AnnFiWg","name":"Farming","named":true},{"id":"vwY5IkQJJDwb2PKEfoc8MQ","name":"Fishing","named":true},{"id":"pJggvotwOkuoc98igUn7xA","name":"Agility","named":true}],"characters":[{"name":"UnSynched","xp":{"4zYUGF5u_0KbMLkWJmmBbQ":4741205,"Wf3i7Ha-B06DH719j1vtBw":1001105,"4pefO9k1lUqfA6mvHNi1SA":911306,"waK-8EyQFQ2xEjCGYmuTRQ":255663,"Tn7t6DQyX0-Q0cM5K7B90A":602352,"PyUi-0LU_riFY46AnnFiWg":2480,"0hreSMRVXUihq9qjDO2CFA":451296,"jqX0Gh6QI0GFFPCDFK_CJQ":2029045,"heq7u88Q2UuLXFqLGTVwQw":13442,"NOqC-z-2ckqi0El22qMFlw":28275,"vwY5IkQJJDwb2PKEfoc8MQ":11003,"pJggvotwOkuoc98igUn7xA":461914},"total_xp":10509086,"levels":{"4pefO9k1lUqfA6mvHNi1SA":98,"0hreSMRVXUihq9qjDO2CFA":95,"heq7u88Q2UuLXFqLGTVwQw":38,"jqX0Gh6QI0GFFPCDFK_CJQ":99,"4zYUGF5u_0KbMLkWJmmBbQ":99,"Wf3i7Ha-B06DH719j1vtBw":99,"waK-8EyQFQ2xEjCGYmuTRQ":83,"Tn7t6DQyX0-Q0cM5K7B90A":96,"NOqC-z-2ckqi0El22qMFlw":46,"PyUi-0LU_riFY46AnnFiWg":22,"vwY5IkQJJDwb2PKEfoc8MQ":36,"pJggvotwOkuoc98igUn7xA":95},"total_level":906,"quests_total":50,"quests_done":34,"quests_started":9,"playtime_s":268166,"week_xp":null,"week_play_s":null}]};
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString("en-GB");
+const hrs = s => (s / 3600).toFixed(1);
+const el = (tag, text, cls) => {
+  const e = document.createElement(tag);
+  if (text !== undefined) e.textContent = text;
+  if (cls) e.className = cls;
+  return e;
+};
+
+/* Icons: original drawings on a 16x16 grid, keyed by lower-case category name. */
+const S = 'fill="none" stroke-linecap="round" stroke-linejoin="round"';
+const ICONS = {
+  overall: '<rect x="2" y="9" width="3" height="5" fill="#b8893a"/><rect x="6.5" y="5" width="3" height="9" fill="#e2b84a"/><rect x="11" y="2" width="3" height="12" fill="#ffe139"/>',
+  attack: `<g ${S}><path d="M13.5 2.5 6 10" stroke="#d5dde3" stroke-width="2.2"/><path d="M4 8l4 4" stroke="#c9963c" stroke-width="1.8"/><path d="M5 11l-2.5 2.5" stroke="#8a6234" stroke-width="2"/></g>`,
+  magic: '<path d="M8.6 1.2 12.4 11H3.6Z" fill="#3fb0c2"/><ellipse cx="8" cy="12" rx="6.6" ry="2.2" fill="#2a8697"/><circle cx="9.2" cy="7.2" r="1" fill="#ffe139"/><circle cx="6.9" cy="9.3" r=".6" fill="#ffe139"/>',
+  ranged: `<g ${S}><path d="M4 2Q13.5 8 4 14" stroke="#b07a3c" stroke-width="1.7"/><path d="M4 2v12" stroke="#e6e6e6" stroke-width=".8"/><path d="M2 8h10.5" stroke="#d5dde3" stroke-width="1.2"/></g><path d="M12 6.2 15.2 8 12 9.8Z" fill="#d5dde3"/>`,
+  mining: `<g ${S}><path d="M9 4 4 14" stroke="#8a6234" stroke-width="1.9"/><path d="M2.5 6.5Q7.5 1.2 14 3.8" stroke="#d2603f" stroke-width="2.3"/></g>`,
+  woodcutting: '<rect x="7" y="9.5" width="2" height="5.5" fill="#7a5230"/><circle cx="8" cy="5.4" r="4.2" fill="#55a041"/><circle cx="4.6" cy="8" r="2.6" fill="#4a9038"/><circle cx="11.4" cy="8" r="2.6" fill="#4a9038"/>',
+  artisan: `<g ${S}><path d="M3 13.5 10.5 6" stroke="#8a6234" stroke-width="1.7"/><path d="M13 13.5 5.5 6" stroke="#8a6234" stroke-width="1.7"/><path d="M9.3 3.2l3.5 3.5" stroke="#e0b93f" stroke-width="3.2" stroke-linecap="butt"/><path d="M6.7 3.2 3.2 6.7" stroke="#e0b93f" stroke-width="3.2" stroke-linecap="butt"/></g>`,
+  construction: '<path d="M1.5 9.5 10 5l1.4 3L3 12.8Z" fill="#74b6e6"/><path d="M3 12.8l1-1.6.9 1 .9-1.5.9 1 .9-1.5.9 1 .9-1.5.9 1 .9-1.6" fill="none" stroke="#0b0a08" stroke-width=".5"/><path d="M9.6 4.6 13.6 2.8l1.6 4-4 1.8Z" fill="#8a6234"/>',
+  cooking: `<path d="M3 6.5h10q.6 6.8-5 7.2-5.6-.4-5-7.2Z" fill="#e58f4d"/><rect x="2.2" y="5.2" width="11.6" height="1.8" rx=".6" fill="#b86a34"/><g ${S} stroke="#e6e6e6" stroke-width=".9"><path d="M6 3.8q-.9-1 0-2"/><path d="M8.3 3.8q-.9-1 0-2"/><path d="M10.6 3.8q-.9-1 0-2"/></g>`,
+  runecrafting: `<path d="M8 1.3 13.6 5l-1 7.2L8 14.7l-4.6-2.5L2.4 5Z" fill="#8f62d6"/><path d="M9.3 3.8 6.2 8.6h3L7.4 12.4" ${S} stroke="#f3eaff" stroke-width="1.3"/>`,
+  farming: `<rect x="5" y="6" width="7" height="7.5" rx="1" fill="#dcdcdc"/><g ${S} stroke="#dcdcdc"><path d="M5 9.5 2 5.6" stroke-width="1.7"/><path d="M12 7.2q3.4 2.4 0 4.8" stroke-width="1.3"/></g><circle cx="1.9" cy="5.2" r="1.3" fill="#bdbdbd"/><rect x="5" y="6" width="7" height="1.4" rx=".7" fill="#bdbdbd"/>`,
+  fishing: '<path d="M11 8 15 4.8v6.4Z" fill="#4a8cc4"/><ellipse cx="7" cy="8" rx="5.2" ry="3.1" fill="#5fa6de"/><circle cx="4.4" cy="7.2" r=".8" fill="#0b0a08"/><path d="M6 5.3Q8 3.6 9.6 5.4Z" fill="#4a8cc4"/>',
+  agility: `<circle cx="10" cy="2.8" r="1.7" fill="#e0564b"/><g ${S} stroke="#e0564b" stroke-width="1.7"><path d="M9.2 5.2 7.4 9"/><path d="M5.4 6.6 8.8 5.8l2.4 2"/><path d="M7.4 9l2.6 2-.6 3.2"/><path d="M7.4 9 5.6 11.4H2.8"/></g>`,
+  quests: '<path d="M8 1.2 9.9 6.1 14.8 8 9.9 9.9 8 14.8 6.1 9.9 1.2 8 6.1 6.1Z" fill="#4f8fe0"/><circle cx="8" cy="8" r="1.5" fill="#dcecff"/>',
+  playtime: `<circle cx="8" cy="8" r="6" fill="#efe6c8" stroke="#b8893a" stroke-width="1.6"/><path d="M8 4.4V8l2.6 1.6" ${S} stroke="#3a2d12" stroke-width="1.3"/>`,
+  unknown: '<path d="M8 3 13 8 8 13 3 8Z" fill="#d9c27e"/>',
+};
+function icon(key) {
+  const span = el("span", undefined, "ic");
+  span.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">' + (ICONS[key] || ICONS.unknown) + "</svg>";
+  return span;
+}
+const withIcon = (node, key) => { node.prepend(icon(key)); return node; };
+
+/* Every category is one metric: a value to rank by and a way to print it. */
+function categories() {
+  const lv = D.characters.every(c => c.levels);  // levels need the XP table at build time
+  const cats = [{ id: "overall", label: "Overall", col: "XP", show: c => fmt(c.total_xp),
+    value: c => (lv ? c.total_level * 1e9 : 0) + c.total_xp, level: lv ? c => c.total_level : null }];
+  D.skills.forEach(s => cats.push({ id: s.id, label: s.name, col: "XP", value: c => c.xp[s.id] || 0,
+    show: c => fmt(c.xp[s.id] || 0), level: lv ? c => c.levels[s.id] || 1 : null }));
+  cats.push({ sep: true });
+  cats.push({ id: "quests", label: "Quests", col: "Completed", value: c => c.quests_done, show: c => c.quests_done + " / " + c.quests_total });
+  cats.push({ id: "playtime", label: "Playtime", col: "Hours", value: c => c.playtime_s, show: c => hrs(c.playtime_s) });
+  cats.forEach(c => { if (!c.sep) c.icon = c.label.toLowerCase(); });
+  return cats;
+}
+const CATS = D ? categories() : [];
+const cat = id => CATS.find(c => c.id === id);
+const rank = (c, who) => 1 + D.characters.filter(o => c.value(o) > c.value(who)).length;
+const player = name => D.characters.find(c => c.name === name);
+let state = { view: "cat", id: "overall" };
+
+function nameLink(c) {
+  const b = el("button", c.name, "link");
+  b.onclick = () => go({ view: "player", name: c.name });
+  return b;
+}
+function row(cells, tag) {
+  const tr = el("tr");
+  cells.forEach(([content, cls]) => {
+    const td = el(tag || "td", undefined, cls || "");
+    if (content instanceof Node) td.append(content); else td.textContent = content;
+    tr.append(td);
+  });
+  return tr;
+}
+function fill(heading, head, rows, foot, iconKey) {
+  $("heading").textContent = heading;
+  if (iconKey) withIcon($("heading"), iconKey);
+  const thead = el("thead"), tbody = el("tbody");
+  thead.append(row(head, "th"));
+  rows.forEach(r => tbody.append(row(r)));
+  $("table").replaceChildren(thead, tbody);
+  $("table").classList.toggle("wide", head.length > 4);
+  $("extra").replaceChildren();
+  $("foot").textContent = foot || "";
+  $("foot").hidden = !foot;
+}
+
+/* Playtime from the server log: a table of recent totals plus one small bar chart per player. */
+function renderPlaytime() {
+  const P = D.playtime, n = P.days.length;
+  const sum = (a, k) => a.slice(n - k).reduce((x, y) => x + y, 0);
+  const players = [...P.players];
+  D.characters.forEach(c => {
+    if (!players.some(p => p.name === c.name)) players.push({ name: c.name, daily: new Array(n).fill(0), online: false });
+  });
+  players.sort((a, b) => sum(b.daily, 7) - sum(a.daily, 7) || sum(b.daily, 28) - sum(a.daily, 28));
+  const h = s => s ? hrs(s) : "-";
+  const rows = players.map((p, i) => {
+    const ch = player(p.name), cell = el("span");
+    cell.append(ch ? nameLink(ch) : p.name);
+    if (p.online) cell.append(el("span", " online", "on"));
+    return [[String(i + 1)], [cell, "l"], [h(p.daily[n - 1])], [h(sum(p.daily, 7))], [h(sum(p.daily, n))], [ch ? hrs(ch.playtime_s) : "-"]];
+  });
+  fill("Playtime Hiscores", [["Rank"], ["Name", "l"], ["Today"], ["7 days"], [n + " days"], ["Total"]], rows,
+    "Hours. Recent figures come from the server log, with days in UK time. Total is the character's own counter.", "playtime");
+
+  const k = Math.min(14, n), days = P.days.slice(n - k), W = 16, H = 44, NS = "http://www.w3.org/2000/svg";
+  const active = players.filter(p => p.daily.slice(n - k).some(Boolean));
+  const box = el("div", undefined, "chart");
+  box.append(el("h3", "Hours per day, last " + k + " days"));
+  if (!active.length) { box.append(el("p", "No sessions in the last " + k + " days.", "tip")); $("extra").append(box); return; }
+  const max = Math.max(3600, ...active.flatMap(p => p.daily.slice(n - k)));
+  const tip = el("p", "Hover or tap a bar for the figure. All rows share one scale.", "tip");
+  const svgEl = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([a, v]) => e.setAttribute(a, v)); return e; };
+  active.forEach(p => {
+    const row = el("div", undefined, "crow");
+    row.append(el("span", p.name, "cname"));
+    const svg = svgEl("svg", { viewBox: "0 0 " + k * W + " " + H, role: "img", "aria-label": p.name + ": hours per day" });
+    p.daily.slice(n - k).forEach((s, i) => {
+      const bh = s ? Math.max(2, Math.round(s / max * H)) : 0;
+      if (bh) svg.append(svgEl("rect", { class: "bar", x: i * W + 3, y: H - bh, width: W - 6, height: bh, rx: Math.min(2, bh / 2) }));
+      const hit = svgEl("rect", { class: "hit", x: i * W, y: 0, width: W, height: H });
+      const when = new Date(days[i] + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+      const say = () => {
+        box.querySelectorAll(".hit.sel").forEach(e => e.classList.remove("sel"));
+        hit.classList.add("sel");
+        tip.textContent = p.name + ", " + when + ": " + (s ? hrs(s) + " h" : "did not play");
+      };
+      hit.addEventListener("pointerenter", say);
+      hit.addEventListener("click", say);
+      svg.append(hit);
+    });
+    row.append(svg);
+    box.append(row);
+  });
+  const axis = el("div", undefined, "caxis");
+  axis.append(el("span", new Date(days[0] + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })), el("span", "Today"));
+  box.append(axis, tip);
+  $("extra").append(box);
+}
+
+function renderCat(id) {
+  if (id === "playtime" && D.playtime) return renderPlaytime();
+  const c = cat(id);
+  const chars = [...D.characters].sort((a, b) => c.value(b) - c.value(a));
+  const week = id === "overall" && chars.some(p => p.week_xp != null) ? "xp"
+    : id === "playtime" && chars.some(p => p.week_play_s != null) ? "play" : null;
+  const head = [["Rank"], ["Name", "l"]];
+  if (c.level) head.push(["Level"]);
+  head.push([c.col]);
+  if (week) head.push(["This week"]);
+  const rows = chars.map(p => {
+    const r = [[String(rank(c, p))], [nameLink(p), "l"]];
+    if (c.level) r.push([fmt(c.level(p))]);
+    r.push([c.show(p)]);
+    if (week === "xp") r.push([p.week_xp ? "+" + fmt(p.week_xp) : "-", "gain"]);
+    if (week === "play") r.push([p.week_play_s ? "+" + hrs(p.week_play_s) : "-", "gain"]);
+    return r;
+  });
+  const unnamed = D.skills.some(s => s.id === id && !s.named);
+  fill(c.label + " Hiscores", head, rows,
+    unnamed ? "Skill names are not mapped yet, so skills show as numbers."
+    : id === "quests" ? "Completed, out of the quests each character has discovered." : "", c.icon);
+}
+
+function renderPlayer(name) {
+  const p = player(name);
+  const rows = CATS.filter(c => !c.sep).map(c => {
+    const b = withIcon(el("button", c.label, "link"), c.icon);
+    b.onclick = () => go({ view: "cat", id: c.id });
+    return [[b, "l"], [String(rank(c, p))], [c.level ? fmt(c.level(p)) : ""], [c.show(p)]];
+  });
+  fill("Personal scores for " + p.name, [["Skill", "l"], ["Rank"], ["Level"], ["XP"]], rows);
+}
+
+function renderCompare(a, b) {
+  const pa = player(a), pb = player(b);
+  const rows = CATS.filter(c => !c.sep).map(c => {
+    const va = c.value(pa), vb = c.value(pb);
+    const cell = p => c.level ? fmt(c.level(p)) + " (" + c.show(p) + ")" : c.show(p);
+    return [[cell(pa), va > vb ? "win" : ""], [c.label, "c"], [cell(pb), vb > va ? "win l" : "l"]];
+  });
+  fill(pa.name + " vs " + pb.name, [[pa.name], ["Skill", "c"], [pb.name, "l"]], rows);
+}
+
+function go(next) {
+  state = next;
+  if (state.view === "cat") renderCat(state.id);
+  else if (state.view === "player") renderPlayer(state.name);
+  else renderCompare(state.a, state.b);
+  [...$("cats").querySelectorAll("button")].forEach(b =>
+    b.setAttribute("aria-current", String(state.view === "cat" && b.dataset.id === state.id)));
+}
+
+if (!D) {
+  $("updated").textContent = "No data: this page is built by dw_build.py.";
+} else {
+  document.title = D.title;
+  $("title").textContent = D.title;
+  $("updated").textContent = "Last updated: " + new Date(D.updated).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+  CATS.forEach(c => {
+    const li = el("li", undefined, c.sep ? "sep" : "");
+    if (!c.sep) {
+      const b = withIcon(el("button", c.label, "link"), c.icon);
+      b.dataset.id = c.id;
+      b.onclick = () => go({ view: "cat", id: c.id });
+      li.append(b);
+    }
+    $("cats").append(li);
+  });
+  const names = D.characters.map(c => c.name).sort((a, b) => a.localeCompare(b));
+  ["who", "cmp-a", "cmp-b"].forEach((id, i) => {
+    names.forEach(n => $(id).append(el("option", n)));
+    if (id === "cmp-b" && names.length > 1) $(id).selectedIndex = 1;
+  });
+  $("who-go").onclick = () => go({ view: "player", name: $("who").value });
+  $("cmp-go").onclick = () => go({ view: "compare", a: $("cmp-a").value, b: $("cmp-b").value });
+  go(state);
+}
+</script>
+</body>
+</html>
